@@ -1,0 +1,194 @@
+-- Create the database (if not exists)
+CREATE DATABASE IF NOT EXISTS mental_health_journey;
+USE mental_health_journey;
+
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    date_of_birth DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- User profiles with additional mental health information
+CREATE TABLE IF NOT EXISTS user_profiles (
+    profile_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    bio TEXT,
+    goals TEXT,
+    therapy_history TEXT,
+    medication_history TEXT,
+    privacy_level ENUM('private', 'therapist-only', 'public') DEFAULT 'private',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Therapists/counselors table
+CREATE TABLE IF NOT EXISTS therapists (
+    therapist_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    license_number VARCHAR(50) NOT NULL,
+    specialization VARCHAR(100),
+    years_of_experience INT,
+    availability_status ENUM('available', 'unavailable') DEFAULT 'available',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- User-therapist relationships
+CREATE TABLE IF NOT EXISTS user_therapist (
+    user_id INT NOT NULL,
+    therapist_id INT NOT NULL,
+    status ENUM('pending', 'active', 'terminated') DEFAULT 'pending',
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP NULL,
+    PRIMARY KEY (user_id, therapist_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (therapist_id) REFERENCES therapists(therapist_id) ON DELETE CASCADE
+);
+
+-- Mood tracking table
+CREATE TABLE IF NOT EXISTS mood_entries (
+    entry_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    mood_score INT NOT NULL CHECK (mood_score BETWEEN 1 AND 10),
+    notes TEXT,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Journal entries
+CREATE TABLE IF NOT EXISTS journal_entries (
+    entry_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(100),
+    content TEXT NOT NULL,
+    sentiment_score FLOAT,
+    ai_analysis TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Assessment types
+CREATE TABLE IF NOT EXISTS assessment_types (
+    type_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Assessment questions
+CREATE TABLE IF NOT EXISTS assessment_questions (
+    question_id INT AUTO_INCREMENT PRIMARY KEY,
+    type_id INT NOT NULL,
+    question_text TEXT NOT NULL,
+    options JSON,
+    weight FLOAT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (type_id) REFERENCES assessment_types(type_id) ON DELETE CASCADE
+);
+
+-- User assessment results
+CREATE TABLE IF NOT EXISTS user_assessments (
+    assessment_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type_id INT NOT NULL,
+    score FLOAT,
+    interpretation TEXT,
+    recommendations TEXT,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (type_id) REFERENCES assessment_types(type_id)
+);
+
+-- User assessment answers
+CREATE TABLE IF NOT EXISTS assessment_answers (
+    answer_id INT AUTO_INCREMENT PRIMARY KEY,
+    assessment_id INT NOT NULL,
+    question_id INT NOT NULL,
+    answer_value VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (assessment_id) REFERENCES user_assessments(assessment_id) ON DELETE CASCADE,
+    FOREIGN KEY (question_id) REFERENCES assessment_questions(question_id)
+);
+
+-- Resources/content
+CREATE TABLE IF NOT EXISTS resources (
+    resource_id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(100) NOT NULL,
+    content_type ENUM('article', 'video', 'exercise', 'meditation', 'other') NOT NULL,
+    content TEXT,
+    media_url VARCHAR(255),
+    tags JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- User resource interaction
+CREATE TABLE IF NOT EXISTS user_resources (
+    user_id INT NOT NULL,
+    resource_id INT NOT NULL,
+    saved BOOLEAN DEFAULT FALSE,
+    completed BOOLEAN DEFAULT FALSE,
+    rating INT CHECK (rating BETWEEN 1 AND 5),
+    notes TEXT,
+    last_interacted TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, resource_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (resource_id) REFERENCES resources(resource_id) ON DELETE CASCADE
+);
+
+-- AI chat conversations
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    conversation_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- AI chat messages
+CREATE TABLE IF NOT EXISTS ai_messages (
+    message_id INT AUTO_INCREMENT PRIMARY KEY,
+    conversation_id INT NOT NULL,
+    sender ENUM('user', 'ai') NOT NULL,
+    message_text TEXT NOT NULL,
+    sentiment_analysis JSON,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES ai_conversations(conversation_id) ON DELETE CASCADE
+);
+
+-- User goals and progress
+CREATE TABLE IF NOT EXISTS user_goals (
+    goal_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    description TEXT,
+    target_date DATE,
+    status ENUM('not_started', 'in_progress', 'completed', 'abandoned') DEFAULT 'not_started',
+    progress INT DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Insert some initial assessment types
+INSERT INTO assessment_types (name, description) VALUES 
+('Depression Screening', 'PHQ-9 depression assessment tool'),
+('Anxiety Screening', 'GAD-7 anxiety assessment tool'),
+('Stress Assessment', 'Perceived Stress Scale assessment'),
+('Sleep Quality', 'Pittsburgh Sleep Quality Index');
+
+-- Create indexes for performance
+CREATE INDEX idx_mood_entries_user_id ON mood_entries(user_id);
+CREATE INDEX idx_journal_entries_user_id ON journal_entries(user_id);
+CREATE INDEX idx_user_assessments_user_id ON user_assessments(user_id);
+CREATE INDEX idx_ai_conversations_user_id ON ai_conversations(user_id);
