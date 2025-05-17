@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-// Use the proxy configured in vite.config.js
-const API_URL = '/api';
+// Use the API URL from environment variable
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
 const register = async (userData) => {
   const res = await axios.post(`${API_URL}/auth/register`, userData);

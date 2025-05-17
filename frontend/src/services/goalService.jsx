@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use the proxy configured in vite.config.js
-const API_URL = '/api';
+// Use the API URL from environment variable
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
 const getUserGoals = async () => {
   const token = localStorage.getItem('token');
