@@ -11,10 +11,15 @@ const Assessments = () => {
   const [pastAssessments, setPastAssessments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  const [assignments, setAssignments] = useState([]);
+  const [showAssignments, setShowAssignments] = useState(false);
+  const [assignmentForm, setAssignmentForm] = useState({ title: '', description: '', due_date: '', status: 'pending' });
+  const [editingAssignmentId, setEditingAssignmentId] = useState(null);
 
   useEffect(() => {
     fetchAssessmentTypes();
     fetchPastAssessments();
+    fetchAssignments();
   }, []);
 
   const fetchAssessmentTypes = async () => {
@@ -35,6 +40,15 @@ const Assessments = () => {
       setPastAssessments(data);
     } catch (error) {
       console.error('Error fetching past assessments:', error);
+    }
+  };
+
+  const fetchAssignments = async () => {
+    try {
+      const data = await assessmentService.getUserAssignments();
+      setAssignments(data);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
     }
   };
 
@@ -99,6 +113,48 @@ const Assessments = () => {
     setQuestions([]);
     setAnswers({});
     setResult(null);
+  };
+
+  const handleAssignmentInput = (e) => {
+    const { name, value } = e.target;
+    setAssignmentForm({ ...assignmentForm, [name]: value });
+  };
+
+  const handleAssignmentSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingAssignmentId) {
+        await assessmentService.updateAssignment(editingAssignmentId, assignmentForm);
+      } else {
+        await assessmentService.createAssignment(assignmentForm);
+      }
+      setAssignmentForm({ title: '', description: '', due_date: '', status: 'pending' });
+      setEditingAssignmentId(null);
+      fetchAssignments();
+    } catch (error) {
+      console.error('Error saving assignment:', error);
+    }
+  };
+
+  const handleEditAssignment = (a) => {
+    setAssignmentForm({
+      title: a.title,
+      description: a.description || '',
+      due_date: a.due_date ? a.due_date.split('T')[0] : '',
+      status: a.status
+    });
+    setEditingAssignmentId(a.assignment_id);
+  };
+
+  const handleDeleteAssignment = async (assignmentId) => {
+    if (window.confirm('Delete this assignment?')) {
+      try {
+        await assessmentService.deleteAssignment(assignmentId);
+        fetchAssignments();
+      } catch (error) {
+        console.error('Error deleting assignment:', error);
+      }
+    }
   };
 
   if (loading && !showHistory && !result) {
@@ -355,6 +411,81 @@ const Assessments = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => setShowAssignments(!showAssignments)}
+            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white px-5 py-2 rounded-lg font-semibold shadow-lg transition-all duration-200"
+          >
+            {showAssignments ? 'Hide Assignments' : 'Show Assignments'}
+          </button>
+        </div>
+        {showAssignments && (
+          <div className="mb-10 bg-gray-800 bg-opacity-60 rounded-xl shadow-2xl p-8 border border-gray-700">
+            <h2 className="text-2xl font-semibold mb-6 text-indigo-300">Assignments</h2>
+            <form onSubmit={handleAssignmentSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <input
+                name="title"
+                value={assignmentForm.title}
+                onChange={handleAssignmentInput}
+                placeholder="Title"
+                className="p-2 rounded bg-gray-900 text-white border border-indigo-700"
+                required
+              />
+              <input
+                name="due_date"
+                type="date"
+                value={assignmentForm.due_date}
+                onChange={handleAssignmentInput}
+                className="p-2 rounded bg-gray-900 text-white border border-indigo-700"
+              />
+              <select
+                name="status"
+                value={assignmentForm.status}
+                onChange={handleAssignmentInput}
+                className="p-2 rounded bg-gray-900 text-white border border-indigo-700"
+              >
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="missed">Missed</option>
+              </select>
+              <button
+                type="submit"
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded px-4 py-2"
+              >
+                {editingAssignmentId ? 'Update' : 'Add'}
+              </button>
+            </form>
+            <div className="space-y-3">
+              {assignments.length > 0 ? (
+                assignments.map(a => (
+                  <div key={a.assignment_id} className="flex items-center justify-between bg-gray-900 rounded-lg p-4 border border-indigo-800">
+                    <div>
+                      <div className="font-semibold text-indigo-200">{a.title}</div>
+                      <div className="text-sm text-gray-400">{a.description}</div>
+                      <div className="text-xs text-indigo-400">
+                        Due: {a.due_date ? new Date(a.due_date).toLocaleDateString() : 'N/A'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        a.status === 'completed' ? 'bg-green-900 text-green-300' :
+                        a.status === 'missed' ? 'bg-red-900 text-red-300' :
+                        'bg-indigo-900 text-indigo-300'
+                      }`}>
+                        {a.status}
+                      </span>
+                      <button onClick={() => handleEditAssignment(a)} className="text-indigo-300 hover:text-indigo-100 px-2">Edit</button>
+                      <button onClick={() => handleDeleteAssignment(a.assignment_id)} className="text-red-400 hover:text-red-200 px-2">Delete</button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-indigo-300">No assignments yet.</div>
+              )}
+            </div>
           </div>
         )}
       </div>

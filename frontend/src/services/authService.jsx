@@ -1,25 +1,35 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-// Use the API URL from environment variable
+// Use the API URL from environment variable with consistent format
 const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : '/api';
 
 const register = async (userData) => {
-  const res = await axios.post(`${API_URL}/auth/register`, userData);
-  if (res.data.token) {
-    localStorage.setItem('token', res.data.token);
-    localStorage.setItem('user', JSON.stringify(res.data.user));
+  try {
+    const res = await axios.post(`${API_URL}/auth/register`, userData);
+    if (res.data.token) {
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+    }
+    return res.data;
+  } catch (error) {
+    console.error('Register error:', error);
+    throw error;
   }
-  return res.data;
 };
 
 const login = async (credentials) => {
-  const res = await axios.post(`${API_URL}/auth/login`, credentials);
-  if (res.data.token) {
-    localStorage.setItem('token', res.data.token);
-    localStorage.setItem('user', JSON.stringify(res.data.user));
+  try {
+    const res = await axios.post(`${API_URL}/auth/login`, credentials);
+    if (res.data.token) {
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
+    }
+    return res.data;
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
   }
-  return res.data;
 };
 
 const logout = () => {

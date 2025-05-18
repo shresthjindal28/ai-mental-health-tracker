@@ -1,4 +1,5 @@
 const Assessment = require('../models/assessmentModel');
+const { Assignment, dummyAssignmentQuestions, AssignmentResponse } = require('../models/assessmentModel');
 
 exports.getAssessmentTypes = async (req, res) => {
   try {
@@ -148,5 +149,101 @@ exports.getUserAssessments = async (req, res) => {
   } catch (err) {
     console.error('Error getting user assessments:', err);
     res.status(500).json({ error: 'Error getting user assessments', details: err.message });
+  }
+};
+
+// Assignment CRUD
+exports.getUserAssignments = async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const assignments = await Assignment.findByUserId(userId);
+    res.json(assignments);
+  } catch (err) {
+    res.status(500).json({ error: 'Error retrieving assignments', details: err.message });
+  }
+};
+
+exports.createAssignment = async (req, res) => {
+  const userId = req.user.id;
+  const { title, description, due_date, status } = req.body;
+  try {
+    const result = await Assignment.create({
+      userId,
+      title,
+      description,
+      dueDate: due_date,
+      status
+    });
+    const newAssignment = await Assignment.findById(result.insertId);
+    res.status(201).json(newAssignment);
+  } catch (err) {
+    res.status(500).json({ error: 'Error creating assignment', details: err.message });
+  }
+};
+
+exports.updateAssignment = async (req, res) => {
+  const userId = req.user.id;
+  const { assignmentId } = req.params;
+  const { title, description, due_date, status } = req.body;
+  try {
+    const assignment = await Assignment.findById(assignmentId);
+    if (!assignment) return res.status(404).json({ error: 'Assignment not found' });
+    if (assignment.user_id !== userId) return res.status(403).json({ error: 'Not authorized' });
+    await Assignment.update({
+      assignmentId,
+      title,
+      description,
+      dueDate: due_date,
+      status
+    });
+    const updated = await Assignment.findById(assignmentId);
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: 'Error updating assignment', details: err.message });
+  }
+};
+
+exports.deleteAssignment = async (req, res) => {
+  const userId = req.user.id;
+  const { assignmentId } = req.params;
+  try {
+    const assignment = await Assignment.findById(assignmentId);
+    if (!assignment) return res.status(404).json({ error: 'Assignment not found' });
+    if (assignment.user_id !== userId) return res.status(403).json({ error: 'Not authorized' });
+    await Assignment.delete(assignmentId);
+    res.json({ message: 'Assignment deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error deleting assignment', details: err.message });
+  }
+};
+
+exports.getAssignmentQuestions = async (req, res) => {
+  // For demo, always return the dummy questions
+  res.json(dummyAssignmentQuestions);
+};
+
+exports.submitAssignmentResponses = async (req, res) => {
+  const userId = req.user.id;
+  const { assignmentId, answers } = req.body;
+  if (!assignmentId || !answers || Object.keys(answers).length === 0) {
+    return res.status(400).json({ error: 'Assignment ID and answers are required' });
+  }
+  try {
+    // Optionally, check assignment belongs to user
+    const assignment = await Assignment.findById(assignmentId);
+    if (!assignment || assignment.user_id !== userId) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+    // Save each answer
+    for (const [questionId, answerValue] of Object.entries(answers)) {
+      await AssignmentResponse.saveResponse({
+        assignmentId,
+        questionId,
+        answerValue
+      });
+    }
+    res.status(201).json({ message: 'Assignment responses saved' });
+  } catch (err) {
+    res.status(500).json({ error: 'Error saving assignment responses', details: err.message });
   }
 };

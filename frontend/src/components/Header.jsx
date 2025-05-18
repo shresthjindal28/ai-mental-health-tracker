@@ -1,13 +1,12 @@
-import React, { useContext, useState, useRef, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { 
-  FaHome, FaBook, FaChartLine, FaUser, FaBars, FaTimes, FaBrain, 
-  FaSignOutAlt, FaClipboardList, FaBullseye, FaRobot, FaChevronDown,
-  FaCog, FaCheck
+  FaHome, FaBook, FaBrain, FaSignOutAlt, FaBars, FaTimes,  
+  FaClipboardList, FaBullseye, FaRobot, FaUser, FaCog, FaChevronDown
 } from 'react-icons/fa';
 
-// Predefined avatar options with Unsplash images
+// Predefined avatar options
 const avatars = [
   { id: 'default', image: null, icon: <FaUser className="text-white" /> },
   { id: 'avatar1', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=faces', name: 'Professional' },
@@ -18,326 +17,402 @@ const avatars = [
   { id: 'avatar6', image: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=faces', name: 'Thoughtful' },
 ];
 
+// App routes for authenticated users
+const appRoutes = [
+  { path: '/dashboard', label: 'Dashboard', icon: <FaHome /> },
+  { path: '/journal', label: 'Journal', icon: <FaBook /> },
+  { path: '/goals', label: 'Goals', icon: <FaBullseye /> },
+  { path: '/assessments', label: 'Assessments', icon: <FaClipboardList /> },
+  { path: '/ai-chat', label: 'AI Chat', icon: <FaRobot /> },
+];
+
+// Static links for home page sections
+const homeLinks = [
+  { id: 'home', label: 'Home' },
+  { id: 'about', label: 'About' },
+  { id: 'tech-stack', label: 'Tech Used' },
+  { id: 'contact', label: 'Contact' }
+];
+
 const Header = () => {
-  const { user, logout, isAuthenticated, updateUserProfile } = useContext(AuthContext);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
-  const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || 'default');
+  const { user, logout, isAuthenticated } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
-  const dropdownRef = useRef();
-  const avatarSelectorRef = useRef();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
+  
+  // State management
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  
+  // Refs for click outside handling
+  const profileDropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+  
+  // Username/display name
+  const displayName = user?.firstName || user?.username || 'User';
+  
+  // Get current avatar
+  const userAvatar = user?.avatar || 'default';
+  const currentAvatar = avatars.find(a => a.id === userAvatar) || avatars[0];
+  
+  // Check if we're on the home page
+  const isHomePage = location.pathname === '/';
+  
+  // Check if a given route is active
+  const isActiveRoute = (path) => location.pathname === path;
+  
+  // Handle smooth scroll for home page sections
+  const scrollToSection = (e, sectionId) => {
+    e.preventDefault();
+    
+    // Close mobile menu
     setMobileMenuOpen(false);
-    setDropdownOpen(false);
-  };
-
-  const isActive = (path) => {
-    return location.pathname === path;
-  };
-
-  // Extract first name if available
-  const firstName = user?.firstName || user?.username || '';
-
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: <FaChartLine /> },
-    { path: '/journal', label: 'Journal', icon: <FaBook /> },
-    { path: '/goals', label: 'Goals', icon: <FaBullseye /> },
-    { path: '/assessments', label: 'Assessments', icon: <FaClipboardList /> },
-    { path: '/ai-chat', label: 'AI Chat', icon: <FaRobot /> },
-  ];
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!dropdownOpen) return;
-    function handleClick(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [dropdownOpen]);
-
-  const handleAvatarSelect = async (avatarId) => {
-    setSelectedAvatar(avatarId);
-    setShowAvatarSelector(false);
     
-    // If you have a function to update user profile, call it here
-    if (updateUserProfile) {
-      try {
-        await updateUserProfile({ avatar: avatarId });
-      } catch (error) {
-        console.error('Failed to update avatar:', error);
-      }
+    const section = document.getElementById(sectionId);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
-
-  // Close avatar selector on outside click
+  
+  // Handle navigation to app routes
+  const navigateTo = (path) => {
+    setMobileMenuOpen(false);
+    setProfileDropdownOpen(false);
+    navigate(path);
+  };
+  
+  // Handle logout
+  const handleLogout = () => {
+    setProfileDropdownOpen(false);
+    setMobileMenuOpen(false);
+    logout();
+  };
+  
+  // Close dropdowns when clicking outside
   useEffect(() => {
-    if (!showAvatarSelector) return;
-    function handleClick(e) {
-      if (avatarSelectorRef.current && !avatarSelectorRef.current.contains(e.target)) {
-        setShowAvatarSelector(false);
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setProfileDropdownOpen(false);
       }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showAvatarSelector]);
-
-  // Get current avatar data
-  const currentAvatar = avatars.find(a => a.id === selectedAvatar) || avatars[0];
-
-  const handleNavigateToSettings = (e) => {
-    e.preventDefault(); // Prevent default action
-    e.stopPropagation(); // Stop event propagation
-    setDropdownOpen(false); // Close dropdown
-    setMobileMenuOpen(false); // Close mobile menu if open
+    };
     
-    // Use navigate with a slight delay to avoid any race conditions
-    setTimeout(() => {
-      navigate('/settings');
-    }, 50);
-  };
-
-  // Sync selectedAvatar with user.avatar
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  
+  // Prevent body scroll when mobile menu is open
   useEffect(() => {
-    setSelectedAvatar(user?.avatar || 'default');
-  }, [user?.avatar]);
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [mobileMenuOpen]);
 
   return (
-    <header className="backdrop-blur-lg bg-gradient-to-r from-gray-900/80 via-indigo-900/70 to-gray-900/80 shadow-lg border-b border-indigo-900 relative z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center py-4">
-          <Link
-            to="/"
-            className="flex items-center space-x-2 select-none"
-            style={{
-              background: 'rgba(30, 41, 59, 0.7)',
-              borderRadius: '1rem',
-              padding: '0.5rem 1rem',
-              boxShadow: '0 4px 24px 0 rgba(80,80,255,0.10)'
-            }}
-          >
-            <FaBrain className="text-3xl text-indigo-400 drop-shadow-lg" />
-            <h1 className="text-xl font-extrabold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent tracking-tight">
-              Mental Health Journey
-            </h1>
-          </Link>
-
+    <header
+      className={`w-full top-0 z-50 bg-gradient-to-r from-gray-900/95 via-indigo-900/95 to-gray-900/95 border-b border-indigo-800 shadow-lg backdrop-blur-md
+      ${isAuthenticated ? 'sticky' : 'fixed'}
+      `}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <div className="flex-shrink-0">
+            <Link 
+              to="/"
+              className="flex items-center space-x-2"
+              onClick={(e) => {
+                if (isHomePage) {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+            >
+              <div className="bg-indigo-900/60 p-2 rounded-lg shadow-md">
+                <FaBrain className="h-6 w-6 text-indigo-400" />
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent tracking-tight">
+                Mental Health Journey
+              </span>
+            </Link>
+          </div>
+          
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex space-x-6">
             {isAuthenticated ? (
-              <div className="relative ml-4" ref={dropdownRef}>
-                <button
-                  onClick={() => setDropdownOpen((v) => !v)}
-                  className="flex items-center gap-2 border-l border-indigo-700 pl-4 focus:outline-none group"
+              // App routes for authenticated users
+              appRoutes.map((route) => (
+                <Link
+                  key={route.path}
+                  to={route.path}
+                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 transition-colors
+                    ${isActiveRoute(route.path) 
+                      ? 'bg-indigo-800 text-white' 
+                      : 'text-indigo-200 hover:bg-indigo-800/50 hover:text-white'
+                    }`}
                 >
-                  <div className="relative">
-                    <span className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-2xl shadow-lg border-2 border-indigo-700 group-hover:scale-105 transition-transform duration-200 overflow-hidden">
-                      {currentAvatar.image ? (
-                        <img 
-                          src={currentAvatar.image} 
-                          alt={currentAvatar.name || "User avatar"} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        currentAvatar.icon
-                      )}
-                    </span>
-                    {/* Fixed span click handler */}
-                    <span 
-                      className="absolute -bottom-1 -right-1 bg-indigo-800 rounded-full p-1 border border-indigo-600 hover:bg-indigo-700 transition-colors duration-200 text-xs text-white cursor-pointer"
-                      onClick={handleNavigateToSettings}
-                      title="Profile settings"
-                    >
-                      <FaCog size={10} />
-                    </span>
+                  <span className="text-indigo-400">{route.icon}</span>
+                  <span>{route.label}</span>
+                </Link>
+              ))
+            ) : (
+              // Home page links for non-authenticated users
+              isHomePage && homeLinks.map((link) => (
+                <a
+                  key={link.id}
+                  href={`#${link.id}`}
+                  onClick={(e) => scrollToSection(e, link.id)}
+                  className="px-3 py-2 rounded-md text-sm font-medium text-indigo-200 hover:bg-indigo-800/50 hover:text-white transition-colors"
+                >
+                  {link.label}
+                </a>
+              ))
+            )}
+          </nav>
+          
+          {/* Right side: Auth buttons or user profile */}
+          <div className="flex items-center">
+            {isAuthenticated ? (
+              // User profile dropdown for authenticated users
+              <div className="relative" ref={profileDropdownRef}>
+                <button 
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center space-x-2 bg-indigo-900/30 px-3 py-2 rounded-lg hover:bg-indigo-800/50 transition-colors focus:outline-none"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden flex items-center justify-center">
+                    {currentAvatar.image ? (
+                      <img 
+                        src={currentAvatar.image} 
+                        alt="User avatar" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      currentAvatar.icon
+                    )}
                   </div>
-                  <span className="font-bold text-indigo-100 text-lg capitalize">{firstName}</span>
-                  <FaChevronDown className={`ml-1 text-indigo-300 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                  <span className="text-indigo-100 font-medium hidden sm:block">
+                    {displayName}
+                  </span>
+                  <FaChevronDown className={`text-indigo-300 transition-transform duration-200 ${
+                    profileDropdownOpen ? 'rotate-180' : ''
+                  }`} />
                 </button>
                 
-                {dropdownOpen && (
-                  <div className="absolute right-0 mt-3 w-60 bg-gradient-to-br from-gray-900 via-indigo-900 to-gray-800 border border-indigo-800 rounded-2xl shadow-2xl z-[999] py-3 animate-fadeIn">
-                    <div className="px-5 py-2 text-indigo-300 font-semibold flex items-center gap-2 border-b border-indigo-800 mb-2">
-                      <FaUser className="text-indigo-400" />
-                      <span>{firstName}</span>
+                {/* Dropdown menu */}
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-gradient-to-br from-gray-900 via-indigo-900/90 to-gray-900 rounded-lg shadow-xl border border-indigo-800 overflow-hidden">
+                    <div className="py-2 px-4 border-b border-indigo-800/50">
+                      <p className="text-indigo-100 font-medium">{displayName}</p>
+                      <p className="text-indigo-400 text-sm truncate">{user?.email || ''}</p>
                     </div>
-                    <div className="flex flex-col gap-1 px-2">
-                      {navItems.map((item) => (
+                    
+                    <div className="py-1">
+                      {appRoutes.map((route) => (
                         <Link
-                          key={item.path}
-                          to={item.path}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-150 ${
-                            isActive(item.path)
-                              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow'
-                              : 'hover:bg-indigo-800 text-indigo-200'
-                          }`}
-                          onClick={() => setDropdownOpen(false)}
+                          key={route.path}
+                          to={route.path}
+                          className={`block px-4 py-2 text-sm ${
+                            isActiveRoute(route.path)
+                              ? 'bg-indigo-800 text-white'
+                              : 'text-indigo-200 hover:bg-indigo-800/50 hover:text-white'
+                          } flex items-center space-x-2`}
+                          onClick={() => setProfileDropdownOpen(false)}
                         >
-                          {item.icon}
-                          <span>{item.label}</span>
+                          <span className="text-indigo-400">{route.icon}</span>
+                          <span>{route.label}</span>
                         </Link>
                       ))}
-                      
-                      {/* Fixed settings link in dropdown */}
-                      <button
-                        onClick={handleNavigateToSettings}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-150 hover:bg-indigo-800 text-indigo-200 w-full text-left"
+                    </div>
+                    
+                    <div className="py-1 border-t border-indigo-800/50">
+                      <Link
+                        to="/settings"
+                        className="block px-4 py-2 text-sm text-indigo-200 hover:bg-indigo-800/50 hover:text-white flex items-center space-x-2"
+                        onClick={() => setProfileDropdownOpen(false)}
                       >
-                        <FaCog />
+                        <FaCog className="text-indigo-400" />
                         <span>Settings</span>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 hover:text-red-300 flex items-center space-x-2"
+                      >
+                        <FaSignOutAlt />
+                        <span>Logout</span>
                       </button>
                     </div>
-                    <div className="border-t border-indigo-800 my-2" />
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 w-full px-4 py-2 text-left text-red-400 hover:bg-red-900 rounded-lg font-semibold transition-all duration-150"
-                    >
-                      <FaSignOutAlt />
-                      <span>Logout</span>
-                    </button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="flex items-center space-x-4 ml-4">
+              // Auth buttons for non-authenticated users
+              <div className="flex items-center space-x-4">
                 <Link
                   to="/login"
-                  className="px-4 py-2 rounded-lg text-indigo-200 hover:bg-indigo-800 hover:text-white transition-all duration-200"
+                  className="text-indigo-200 hover:text-white hover:bg-indigo-800/50 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg transition-all duration-200"
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium shadow-md transition-colors"
                 >
                   Register
                 </Link>
               </div>
             )}
-          </nav>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden text-indigo-200 focus:outline-none"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <FaTimes size={28} /> : <FaBars size={28} />}
-          </button>
+            
+            {/* Mobile menu button */}
+            <button 
+              className="ml-4 md:hidden bg-indigo-900/30 p-2 rounded-md text-indigo-200 hover:text-white hover:bg-indigo-800/50 focus:outline-none"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Mobile Navigation */}
+      
+      {/* Mobile menu */}
       {mobileMenuOpen && (
-        <nav className="md:hidden bg-gradient-to-br from-gray-900/95 via-indigo-900/90 to-gray-900/95 px-4 py-4 rounded-b-2xl shadow-xl animate-fadeIn z-[999]">
-          <div className="flex flex-col space-y-4 pb-3">
-            {isAuthenticated &&
-              navItems.map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg text-lg font-medium transition-all duration-200
-                    ${isActive(item.path)
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                      : 'hover:bg-gradient-to-r hover:from-indigo-700 hover:to-purple-700 hover:text-white text-indigo-200/90'}
-                  `}
+        <div className="fixed inset-0 z-50 bg-gray-900/95 md:hidden overflow-auto">
+          <div className="px-4 pt-5 pb-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <Link 
+                  to="/"
+                  className="flex items-center space-x-2"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  {item.icon}
-                  <span>{item.label}</span>
+                  <div className="bg-indigo-900/60 p-2 rounded-lg shadow-md">
+                    <FaBrain className="h-6 w-6 text-indigo-400" />
+                  </div>
+                  <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent tracking-tight">
+                    Mental Health Journey
+                  </span>
                 </Link>
-              ))
-            }
-
+              </div>
+              <button 
+                className="p-2 rounded-md text-indigo-200 hover:text-white focus:outline-none"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <FaTimes size={24} />
+              </button>
+            </div>
+            
             {isAuthenticated ? (
               <>
-                <button
-                  onClick={() => setDropdownOpen((v) => !v)}
-                  className="flex items-center space-x-2 py-2 border-t border-indigo-800 mt-2 pt-4 focus:outline-none"
-                >
-                  <div className="relative">
-                    <span className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-full w-9 h-9 flex items-center justify-center text-xl font-bold overflow-hidden">
-                      {currentAvatar.image ? (
-                        <img 
-                          src={currentAvatar.image} 
-                          alt={currentAvatar.name || "User avatar"} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        currentAvatar.icon
-                      )}
-                    </span>
-                    {/* Fixed span click handler for mobile */}
-                    <span 
-                      className="absolute -bottom-1 -right-1 bg-indigo-800 rounded-full p-1 border border-indigo-600 hover:bg-indigo-700 transition-colors duration-200 text-xs text-white cursor-pointer"
-                      onClick={handleNavigateToSettings}
-                      title="Profile settings"
-                    >
-                      <FaCog size={10} />
-                    </span>
+                {/* User info */}
+                <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-indigo-800/50">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden flex items-center justify-center">
+                    {currentAvatar.image ? (
+                      <img 
+                        src={currentAvatar.image} 
+                        alt="User avatar" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      currentAvatar.icon
+                    )}
                   </div>
-                  <span className="font-semibold text-indigo-200">{firstName}</span>
-                  <FaChevronDown className={`ml-1 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-                {dropdownOpen && (
-                  <div className="bg-gray-900 border border-indigo-800 rounded-xl shadow-xl z-[999] py-2 mt-2">
-                    {navItems.map((item) => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`flex items-center space-x-2 px-4 py-2 hover:bg-indigo-800 rounded-lg transition-all duration-150 ${
-                          isActive(item.path) ? 'text-indigo-300' : 'text-gray-200'
-                        }`}
-                        onClick={() => {
-                          setDropdownOpen(false);
+                  <div>
+                    <p className="text-indigo-100 font-medium">{displayName}</p>
+                    <p className="text-indigo-400 text-sm">{user?.email || ''}</p>
+                  </div>
+                </div>
+                
+                {/* App navigation */}
+                <div className="space-y-2 mb-8">
+                  <p className="text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-2">
+                    Navigation
+                  </p>
+                  {appRoutes.map((route) => (
+                    <Link
+                      key={route.path}
+                      to={route.path}
+                      className={`block px-3 py-3 rounded-lg font-medium text-base ${
+                        isActiveRoute(route.path)
+                          ? 'bg-indigo-800 text-white'
+                          : 'text-indigo-200 hover:bg-indigo-800/50 hover:text-white'
+                      } flex items-center space-x-3`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <span className={`${isActiveRoute(route.path) ? 'text-indigo-200' : 'text-indigo-400'}`}>
+                        {route.icon}
+                      </span>
+                      <span>{route.label}</span>
+                    </Link>
+                  ))}
+                </div>
+                
+                {/* Settings & Logout */}
+                <div className="space-y-2 border-t border-indigo-800/50 pt-4">
+                  <Link
+                    to="/settings"
+                    className="block px-3 py-3 rounded-lg font-medium text-base text-indigo-200 hover:bg-indigo-800/50 hover:text-white flex items-center space-x-3"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <FaCog className="text-indigo-400" />
+                    <span>Settings</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-3 py-3 rounded-lg font-medium text-base text-red-400 hover:bg-red-900/30 hover:text-red-300 flex items-center space-x-3"
+                  >
+                    <FaSignOutAlt />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Home sections for non-authenticated users */}
+                {isHomePage && (
+                  <div className="space-y-2 mb-8">
+                    <p className="text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-2">
+                      Navigation
+                    </p>
+                    {homeLinks.map((link) => (
+                      <a
+                        key={link.id}
+                        href={`#${link.id}`}
+                        className="block px-3 py-3 rounded-lg font-medium text-base text-indigo-200 hover:bg-indigo-800/50 hover:text-white"
+                        onClick={(e) => {
+                          scrollToSection(e, link.id);
                           setMobileMenuOpen(false);
                         }}
                       >
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </Link>
+                        {link.label}
+                      </a>
                     ))}
-                    <div className="border-t border-indigo-800 my-2" />
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setDropdownOpen(false);
-                        setMobileMenuOpen(false);
-                      }}
-                      className="flex items-center space-x-2 w-full px-4 py-2 text-left text-red-400 hover:bg-red-900 rounded-lg transition-all duration-150"
-                    >
-                      <FaSignOutAlt />
-                      <span>Logout</span>
-                    </button>
                   </div>
                 )}
+                
+                {/* Auth buttons */}
+                <div className="mt-6 grid grid-cols-2 gap-4 border-t border-indigo-800/50 pt-6">
+                  <Link
+                    to="/login"
+                    className="text-center px-3 py-3 rounded-lg font-medium text-base text-indigo-200 border border-indigo-700 hover:bg-indigo-800/50 hover:text-white"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="text-center px-3 py-3 rounded-lg font-medium text-base text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-md"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Register
+                  </Link>
+                </div>
               </>
-            ) : (
-              <div className="flex flex-col space-y-2 border-t border-indigo-800 mt-2 pt-4">
-                <Link
-                  to="/login"
-                  className="px-4 py-2 rounded-lg text-indigo-200 hover:bg-indigo-800 hover:text-white transition-all duration-200"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg transition-all duration-200"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Register
-                </Link>
-              </div>
             )}
           </div>
-        </nav>
+        </div>
       )}
     </header>
   );

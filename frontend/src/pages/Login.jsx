@@ -20,7 +20,7 @@ const Login = () => {
     try {
       const response = await authService.login(formData);
       setUser(response.user);
-      navigate('/journal');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       setError(error.response?.data?.error || 'Login failed. Please try again.');
