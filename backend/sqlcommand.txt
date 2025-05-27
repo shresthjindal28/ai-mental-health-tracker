@@ -192,3 +192,20 @@ CREATE INDEX idx_mood_entries_user_id ON mood_entries(user_id);
 CREATE INDEX idx_journal_entries_user_id ON journal_entries(user_id);
 CREATE INDEX idx_user_assessments_user_id ON user_assessments(user_id);
 CREATE INDEX idx_ai_conversations_user_id ON ai_conversations(user_id);
+
+-- View content of all tables
+SELECT * FROM users;
+SELECT * FROM user_profiles;
+SELECT * FROM therapists;
+SELECT * FROM user_therapist;
+SELECT * FROM mood_entries;
+SELECT * FROM journal_entries;
+SELECT * FROM assessment_types;
+SELECT * FROM assessment_questions;
+SELECT * FROM user_assessments;
+SELECT * FROM assessment_answers;
+SELECT * FROM resources;
+SELECT * FROM user_resources;
+SELECT * FROM ai_conversations;
+SELECT * FROM ai_messages;
+SELECT * FROM user_goals;
